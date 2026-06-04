@@ -1,5 +1,8 @@
 # システム設計書: AI-Driven Schema Generator
 
+> **V1 実装範囲:** [v1_release.md](./v1_release.md)  
+> Parser / Visualizer（§4 B, C）は **V2 以降**。V1 は Generator + Web UI のみ。
+
 ## 1. 設計方針 (@Structural)
 - **言語・環境**: Node.js (v20+) / TypeScript
 - **アーキテクチャ**: クリーンアーキテクチャの考え方を取り入れ、コアロジック（スキーマ生成・解析）を外部インターフェース（CLI/API）から独立させる。
@@ -36,14 +39,32 @@
 ```
 
 ## 4. 主要コンポーネント設計
-### A. Generator Service
-ユーザーの入力をAIに渡し、中間表現（JSON）としてスキーマ構造を受け取る。
-### B. Parser Service
-SQLやPrismaファイルを読み込み、Generatorと同じ中間表現（JSON）に変換する。
-### C. Visualizer Service
-中間表現（JSON）を元に、Mermaid形式のMarkdownテキストを生成する。
 
-## 5. 次のステップ
-1. `package.json` の作成と依存関係のインストール。
-2. `tsconfig.json` の設定。
-3. サーバーの基礎実装 (`src/index.ts`)。
+| コンポーネント | V1 | 説明 |
+|----------------|----|------|
+| **A. Generator** | ○ | 要望テキスト → AI → SQL / Prisma（現行 `POST /generate`） |
+| **B. Parser** | — | 既存 SQL/Prisma → 中間 JSON（**V2・リバースエンジニアリング**） |
+| **C. Visualizer** | — | 中間 JSON → Mermaid / `ER_diagram.md`（**V2**） |
+| **D. Web UI** | ○ | `public/` 静的画面（**V1**） |
+
+## 5. Web UI（追加設計・未実装）
+
+要件: [ui_requirements.md](./ui_requirements.md)
+
+```text
+.
+├── public/             # 静的 Web UI（要望入力・結果表示・DL）
+│   ├── index.html
+│   ├── app.js
+│   └── styles.css
+```
+
+- 生成は既存 `POST /generate` を利用
+- 初版は Fastify から `public/` を静的配信する構成を想定（別案: Vite dev サーバー）
+- フロントは API キーを保持しない
+
+## 6. 次のステップ
+
+1. [x] サーバー基礎 + `POST /generate`
+2. [ ] **V1:** Web UI + 静的配信 — [v1_release.md](./v1_release.md)
+3. [ ] **V2:** Parser + Visualizer（リバースエンジニアリング・ER 図）

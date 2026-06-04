@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Schema Generator</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <header class="header">
+        <h1>AI Schema Generator</h1>
+        <p class="subtitle">要望テキストから SQL と Prisma スキーマを生成します（V1）</p>
+      </header>
+
+      <main class="main">
+        <section class="card input-section">
+          <label for="prompt" class="label">要望・概要</label>
+          <textarea
+            id="prompt"
+            class="textarea"
+            rows="6"
+            placeholder="例: ECサイト。商品・注文・ユーザー。在庫管理も含めたい。"
+          ></textarea>
+          <div class="actions">
+            <button type="button" id="generateBtn" class="btn btn-primary">生成する</button>
+          </div>
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+        </section>
+
+        <section id="resultSection" class="card result-section hidden">
+          <div class="result-header">
+            <h2>生成結果</h2>
+            <div class="download-actions">
+              <button type="button" id="downloadSql" class="btn btn-secondary" disabled>
+                schema.sql をダウンロード
+              </button>
+              <button type="button" id="downloadPrisma" class="btn btn-secondary" disabled>
+                schema.prisma をダウンロード
+              </button>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist">
+            <button
+              type="button"
+              class="tab active"
+              role="tab"
+              aria-selected="true"
+              data-tab="sql"
+            >
+              SQL
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="prisma">
+              Prisma
+            </button>
+          </div>
+
+          <pre id="previewSql" class="preview active" aria-label="SQL preview"></pre>
+          <pre id="previewPrisma" class="preview hidden" aria-label="Prisma preview"></pre>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>出力は <code>output/</code> にも保存されます。</p>
+      </footer>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>

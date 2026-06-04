@@ -1,0 +1,18 @@
+# 環境変数ファイル
+.env
+.env.*
+
+# ビルド成果物
+dist/
+build/
+out/
+
+# 依存関係
+node_modules/
+
+# ログファイル
+*.log
+logs/
+
+# 設定ファイル
+config.json

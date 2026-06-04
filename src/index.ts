@@ -1,74 +1,75 @@
 import Fastify from 'fastify';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { FastifyReply } from 'fastify';
 import * as dotenv from 'dotenv';
 import fs from 'fs/promises';
 import path from 'path';
+import { generateSchema, getApiKey } from './core/generator.js';
+import type { ErrorResponse } from './types/schema.js';
 
 dotenv.config();
 
 const fastify = Fastify({ logger: true });
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const PUBLIC_DIR = path.join(process.cwd(), 'public');
+const PORT = Number(process.env.PORT) || 3000;
 
-// 出力ディレクトリの準備
-const OUTPUT_DIR = path.join(process.cwd(), 'output');
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+};
 
-fastify.post('/generate', async (request, reply) => {
-  const { prompt } = request.body as { prompt: string };
+async function servePublic(filename: string, reply: FastifyReply) {
+  const filePath = path.join(PUBLIC_DIR, filename);
+  const content = await fs.readFile(filePath, 'utf-8');
+  const ext = path.extname(filename);
+  return reply.type(MIME_TYPES[ext] ?? 'text/plain').send(content);
+}
+
+fastify.get('/api/health', async () => ({
+  status: 'ok',
+  apiKeyConfigured: Boolean(getApiKey()),
+}));
+
+fastify.post<{ Body: { prompt?: string } }>('/generate', async (request, reply) => {
+  const prompt = request.body?.prompt?.trim();
 
   if (!prompt) {
-    return reply.status(400).send({ error: 'Prompt is required' });
+    return reply.status(400).send({
+      error: '要望テキストを入力してください。',
+    } satisfies ErrorResponse);
+  }
+
+  if (!getApiKey()) {
+    return reply.status(503).send({
+      error: 'GEMINI_API_KEY が設定されていません。プロジェクトルートの .env を確認してください。',
+    } satisfies ErrorResponse);
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    
-    const aiPrompt = `
-      You are a specialized database architect. 
-      Based on the following user requirement, generate a minimal but extensible database schema.
-      
-      Requirements:
-      ${prompt}
-      
-      Output exactly in the following format, separated by "---":
-      1. SQL DDL (PostgreSQL compatible)
-      2. Prisma Schema (only the models)
-      
-      Example format:
-      CREATE TABLE ...
-      ---
-      model ...
-    `;
-
-    const result = await model.generateContent(aiPrompt);
-    const response = await result.response;
-    const text = response.text();
-
-    const [sql, prisma] = text.split('---').map(s => s.trim());
-
-    // ファイル保存
-    await fs.mkdir(OUTPUT_DIR, { recursive: true });
-    await fs.writeFile(path.join(OUTPUT_DIR, 'schema.sql'), sql);
-    await fs.writeFile(path.join(OUTPUT_DIR, 'schema.prisma'), prisma);
-
-    return {
-      message: 'Schema generated successfully',
-      sql,
-      prisma
-    };
+    const result = await generateSchema(prompt);
+    return result;
   } catch (error) {
     fastify.log.error(error);
-    return reply.status(500).send({ error: 'Failed to generate schema' });
+    const message =
+      error instanceof Error ? error.message : 'スキーマの生成に失敗しました。';
+    return reply.status(500).send({ error: message } satisfies ErrorResponse);
   }
 });
 
-fastify.get('/', async () => {
-  return { message: 'AI-Driven Schema Generator Server is running!' };
-});
+fastify.get('/', async (_request, reply) => servePublic('index.html', reply));
+fastify.get('/styles.css', async (_request, reply) => servePublic('styles.css', reply));
+fastify.get('/app.js', async (_request, reply) => servePublic('app.js', reply));
 
 const start = async () => {
+  if (!getApiKey()) {
+    fastify.log.warn(
+      'GEMINI_API_KEY が未設定です。生成 API は利用できません。.env.example を参照してください。'
+    );
+  }
+
   try {
-    await fastify.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('Server is running at http://localhost:3000');
+    await fastify.listen({ port: PORT, host: '0.0.0.0' });
+    console.log(`Server: http://localhost:${PORT}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
