@@ -8,7 +8,9 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:robustness",
+    "test:robustness": "tsx test/v1_robustness.ts",
+    "test:chaos": "tsx test/v1_chaos.ts"
   },
   "repository": {
     "type": "git",
@@ -23,6 +25,7 @@
   "homepage": "https://github.com/dioh0922/ai_driven_schema_generator#readme",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "axios": "^1.7.2",
     "dotenv": "^17.4.2",
     "fastify": "^5.8.5"
   },
