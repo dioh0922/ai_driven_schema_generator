@@ -1,9 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 import type { GenerateSuccessResponse, SchemaFile } from '../types/schema.js';
 
-const OUTPUT_DIR = path.join(process.cwd(), 'output');
+const OUTPUT_ROOT = path.join(process.cwd(), 'output');
 
 const AI_PROMPT_TEMPLATE = (prompt: string) => `
 You are a specialized database architect.
@@ -34,7 +35,7 @@ export function getModelName(): string {
 export async function generateSchema(prompt: string): Promise<GenerateSuccessResponse> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY が設定されていません。.env を確認してください。');
+    throw new Error('GEMINI_API_KEY が設定されていません。');
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -56,9 +57,13 @@ export async function generateSchema(prompt: string): Promise<GenerateSuccessRes
     { name: 'schema.prisma', content: parts[1] },
   ];
 
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  // @Speed: 並列アクセス対策としてリクエストごとに一意識別子でディレクトリを分ける
+  const requestId = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const requestDir = path.join(OUTPUT_ROOT, requestId);
+
+  await fs.mkdir(requestDir, { recursive: true });
   await Promise.all(
-    files.map((file) => fs.writeFile(path.join(OUTPUT_DIR, file.name), file.content))
+    files.map((file) => fs.writeFile(path.join(requestDir, file.name), file.content))
   );
 
   return {
